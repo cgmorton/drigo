@@ -20,7 +20,7 @@ install:
   - conda update -q conda
   - conda info -a
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION gdal==2.2.3 numpy pytest
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION gdal=2.2.3 numpy pytest
   - source activate test-environment
   - python setup.py install
 
