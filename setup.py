@@ -42,6 +42,7 @@ setup(
     download_url='https://github.com/DRI-WSWUP/drigo/archive/v{}.tar.gz'.format(version),
     install_requires=['gdal', 'numpy'],
     setup_requires=['pytest-runner'],
+    tests_require=['pytest'],
     packages=['drigo'],
     keywords='GDAL OGR',
     classifiers = [
