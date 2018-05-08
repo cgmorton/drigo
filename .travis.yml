@@ -5,13 +5,9 @@ python:
   - "3.5"
   - "3.6"
 
-env:
-  - NUMPY=1.14
-  - NUMPY=1.13
-
 install:
-  - pip install -q numpy==$NUMPY
-  - pip install gdal==2.2.3 pytest
+  - pip install -r requirements.txt
+  - pip install pytest
 
 script:
   - python -m pytest
