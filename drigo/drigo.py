@@ -17,6 +17,7 @@ gdal.UseExceptions()
 
 class Extent:
     """Bounding Geographic Extent"""
+
     # def __repr__(self):
     #     return '<Extent xmin:{} ymin:{} xmax:{} ymax:{}>'.format(
     #         self.xmin, self.ymin, self.xmax, self.ymax)
@@ -47,10 +48,14 @@ class Extent:
             else:
                 raise SystemExit('Cellsize was not set')
         if method.upper() == 'ROUND':
-            self.xmin = math.floor((self.xmin - snap_x) / cs + 0.5) * cs + snap_x
-            self.ymin = math.floor((self.ymin - snap_y) / cs + 0.5) * cs + snap_y
-            self.xmax = math.floor((self.xmax - snap_x) / cs + 0.5) * cs + snap_x
-            self.ymax = math.floor((self.ymax - snap_y) / cs + 0.5) * cs + snap_y
+            self.xmin = math.floor(
+                (self.xmin - snap_x) / cs + 0.5) * cs + snap_x
+            self.ymin = math.floor(
+                (self.ymin - snap_y) / cs + 0.5) * cs + snap_y
+            self.xmax = math.floor(
+                (self.xmax - snap_x) / cs + 0.5) * cs + snap_x
+            self.ymax = math.floor(
+                (self.ymax - snap_y) / cs + 0.5) * cs + snap_y
         elif method.upper() == 'EXPAND':
             self.xmin = math.floor((self.xmin - snap_x) / cs) * cs + snap_x
             self.ymin = math.floor((self.ymin - snap_y) / cs) * cs + snap_y
@@ -354,6 +359,53 @@ def raster_driver(raster_path):
         sys.exit()
 
 
+def gdal_to_numpy_type(gdal_type):
+    """Return the NumPy array data type based on a GDAL type
+
+    Parameters
+    ----------
+    gdal_type : class:`gdal.type`
+        GDAL data type
+
+    Returns
+    -------
+    numpy_type: NumPy datatype (:class:`np.dtype`)
+
+    Raises
+    ------
+    ValueError
+        If the input type can not be converted
+
+    """
+    if gdal_type == gdal.GDT_Unknown:
+        numpy_type = np.float64
+    elif gdal_type == gdal.GDT_Byte:
+        numpy_type = np.uint8
+    elif gdal_type == gdal.GDT_UInt16:
+        numpy_type = np.uint16
+    elif gdal_type == gdal.GDT_Int16:
+        numpy_type = np.int16
+    elif gdal_type == gdal.GDT_UInt32:
+        numpy_type = np.uint32
+    elif gdal_type == gdal.GDT_Int32:
+        numpy_type = np.int32
+    elif gdal_type == gdal.GDT_Float32:
+        numpy_type = np.float32
+    elif gdal_type == gdal.GDT_Float64:
+        numpy_type = np.float64
+    # elif gdal_type == gdal.GDT_CInt16:
+    #     numpy_type = np.complex64
+    # elif gdal_type == gdal.GDT_CInt32:
+    #     numpy_type = np.complex64
+    # elif gdal_type == gdal.GDT_CFloat32:
+    #     numpy_type = np.complex64
+    # elif gdal_type == gdal.GDT_CFloat64:
+    #     numpy_type = np.complex64
+    else:
+        raise ValueError('unsupported gdal_type: {}'.format(gdal_type))
+    return numpy_type
+
+
 def numpy_to_gdal_type(numpy_type):
     """Return the GDAL raster data type based on the NumPy array data type
 
@@ -366,6 +418,11 @@ def numpy_to_gdal_type(numpy_type):
     -------
     g_type: GDAL `datatype <http://www.gdal.org/gdal_8h.html#a22e22ce0a55036a96f652765793fb7a4/>`
     _equivalent to the input NumPy :class:`np.dtype`
+
+    Raises
+    ------
+    ValueError
+        If the input type can not be converted
 
     Notes
     -----
@@ -408,11 +465,59 @@ def numpy_to_gdal_type(numpy_type):
     #     g_type = gdal.GDT_CFloat32
     # elif numpy_type == np.complex128:
     #     g_type = gdal.GDT_CFloat32
-    # else:
-    #     numpy_type, m_type_max = gdal.GDT_Unknown
     else:
-        g_type = None
+        raise ValueError('unsupported numpy_type: {}'.format(numpy_type))
+
     return g_type
+
+
+def gdal_type_nodata(gdal_type):
+    """Return the default nodata value based on the GDAL array data type
+
+    Parameters
+    ----------
+    gdal_type : class:`gdal.type`
+        GDAL data type
+
+    Returns
+    -------
+    nodata_value: Nodata value for GDAL which defaults to the
+        minimum value for the number type
+
+    Raises
+    ------
+    ValueError
+        If the input type does not have an assigned nodata value
+
+    """
+    if gdal_type == gdal.GDT_Unknown:
+        nodata_value = float(np.finfo(np.float64).min)
+    elif gdal_type == gdal.GDT_Byte:
+        nodata_value = int(np.iinfo(np.uint8).max)
+    elif gdal_type == gdal.GDT_UInt16:
+        nodata_value = int(np.iinfo(np.uint16).max)
+    elif gdal_type == gdal.GDT_Int16:
+        nodata_value = int(np.iinfo(np.int16).min)
+    elif gdal_type == gdal.GDT_UInt32:
+        nodata_value = int(np.iinfo(np.uint32).max)
+    elif gdal_type == gdal.GDT_Int32:
+        nodata_value = int(np.iinfo(np.int32).min)
+    elif gdal_type == gdal.GDT_Float32:
+        nodata_value = float(np.finfo(np.float32).min)
+    elif gdal_type == gdal.GDT_Float64:
+        nodata_value = float(np.finfo(np.float64).min)
+    # elif gdal_type == gdal.GDT_CInt16:
+    #     nodata_value =
+    # elif gdal_type == gdal.GDT_CInt32:
+    #     nodata_value =
+    # elif gdal_type == gdal.GDT_CFloat32:
+    #     nodata_value =
+    # elif gdal_type == gdal.GDT_CFloat64:
+    #     nodata_value =
+    else:
+        raise ValueError('unsupported gdal_type: {}'.format(gdal_type))
+
+    return nodata_value
 
 
 def numpy_type_nodata(numpy_type):
@@ -428,16 +533,21 @@ def numpy_type_nodata(numpy_type):
     nodata_value: Nodata value for GDAL which defaults to the
         minimum value for the number type
 
+    Raises
+    ------
+    ValueError
+        If the input type does not have an assigned nodata value
+
     """
     if numpy_type == np.bool:
         nodata_value = 0
-    elif numpy_type == np.int:
-        nodata_value = int(np.iinfo(np.int32).min)
     elif numpy_type == np.int8:
         nodata_value = int(np.iinfo(np.int8).min)
     elif numpy_type == np.int16:
         nodata_value = int(np.iinfo(np.int16).min)
     elif numpy_type == np.int32:
+        nodata_value = int(np.iinfo(np.int32).min)
+    elif numpy_type == np.int:
         nodata_value = int(np.iinfo(np.int32).min)
     elif numpy_type == np.uint8:
         nodata_value = int(np.iinfo(np.uint8).max)
@@ -445,63 +555,28 @@ def numpy_type_nodata(numpy_type):
         nodata_value = int(np.iinfo(np.uint16).max)
     elif numpy_type == np.uint32:
         nodata_value = int(np.iinfo(np.uint32).max)
-    elif numpy_type == np.float:
-        nodata_value = float(np.finfo(np.float64).min)
     elif numpy_type == np.float16:
         nodata_value = float(np.finfo(np.float32).min)
     elif numpy_type == np.float32:
         nodata_value = float(np.finfo(np.float32).min)
     elif numpy_type == np.float64:
-        nodata_value = float(np.finfo(np.float32).min)
-    # elif numpy_type == np.int64:   nodata_value =
-    # elif numpy_type == np.uint64:  nodata_value =
-    # elif numpy_type == np.complex:    nodata_value =
-    # elif numpy_type == np.complex64:  nodata_value =
-    # elif numpy_type == np.complex128: nodata_value =
-    # else: numpy_type, m_type_max = gdal.GDT_Unknown
+        nodata_value = float(np.finfo(np.float64).min)
+    elif numpy_type == np.float:
+        nodata_value = float(np.finfo(np.float64).min)
+    # elif numpy_type == np.int64:
+    #     nodata_value =
+    # elif numpy_type == np.uint64:
+    #     nodata_value =
+    # elif numpy_type == np.complex:
+    #     nodata_value =
+    # elif numpy_type == np.complex64:
+    #     nodata_value =
+    # elif numpy_type == np.complex128:
+    #     nodata_value =
     else:
-        nodata_value = None
+        raise ValueError('unsupported numpy_type: {}'.format(numpy_type))
+
     return nodata_value
-
-
-def gdal_to_numpy_type(gdal_type):
-    """Return the NumPy array data type based on a GDAL type
-
-    Parameters
-    ----------
-    gdal_type : class:`gdal.type`
-        GDAL data type
-
-    Returns
-    -------
-    numpy_type: NumPy datatype (:class:`np.dtype`)
-
-    """
-    if gdal_type == gdal.GDT_Unknown:
-        numpy_type = np.float64
-    elif gdal_type == gdal.GDT_Byte:
-        numpy_type = np.uint8
-    elif gdal_type == gdal.GDT_UInt16:
-        numpy_type = np.uint16
-    elif gdal_type == gdal.GDT_Int16:
-        numpy_type = np.int16
-    elif gdal_type == gdal.GDT_UInt32:
-        numpy_type = np.uint32
-    elif gdal_type == gdal.GDT_Int32:
-        numpy_type = np.int32
-    elif gdal_type == gdal.GDT_Float32:
-        numpy_type = np.float32
-    elif gdal_type == gdal.GDT_Float64:
-        numpy_type = np.float64
-    # elif gdal_type == gdal.GDT_CInt16:
-    #     numpy_type = np.complex64
-    # elif gdal_type == gdal.GDT_CInt32:
-    #     numpy_type = np.complex64
-    # elif gdal_type == gdal.GDT_CFloat32:
-    #     numpy_type = np.complex64
-    # elif gdal_type == gdal.GDT_CFloat64:
-    #     numpy_type = np.complex64
-    return numpy_type
 
 
 def polygon_to_raster_ds(feature_path, nodata_value=0, burn_value=1,
@@ -1220,11 +1295,12 @@ def raster_ds_cellsize(raster_ds, x_only=False):
     Parameters
     ----------
     raster_ds (:class:`gdal.Dataset`): the input GDAL raster dataset
-    x_only : bool If True, only return cell width
+    x_only : bool, optional
+        If True, only return cell width (the default is False).
 
     Returns
     -------
-    float: Cellsize of input raster dataset
+    float: cellsize of input raster dataset
 
     """
     return geo_cellsize(raster_ds_geo(raster_ds), x_only)
@@ -1236,7 +1312,8 @@ def geo_cellsize(raster_geo, x_only=False):
     Parameters
     ----------
     raster_geo : tuple :class:`gdal.Geotransform` object
-    x_only : bool If True, only return cell width
+    x_only : bool, optional
+        If True, only return cell width (the default is False).
 
     Returns
     -------
@@ -1257,7 +1334,8 @@ def raster_path_origin(raster_path):
 
     Parameters
     ----------
-    raster_path : str The raster file path
+    raster_path : str
+        The raster file path.
 
     Returns
     -------
@@ -1273,7 +1351,7 @@ def raster_path_origin(raster_path):
 def raster_ds_origin(raster_ds):
     """Return upper-left corner of an opened raster dataset
 
-    Returns the upper-left corner coorindates of an open GDAL raster
+    Returns the upper-left corner coordinates of an open GDAL raster
     dataset with the coordinates returned in the same project/GCS as the
     input raster dataset.
 
@@ -1315,7 +1393,7 @@ def extent_origin(raster_extent):
 
     Parameters
     ----------
-    raster_extent:
+    raster_extent :
 
     Returns
     -------
@@ -1413,7 +1491,7 @@ def raster_ds_shape(raster_ds):
 
     Parameters
     ----------
-    raster_ds:
+    raster_ds :
         Opened raster dataset.
 
     Returns
@@ -1470,22 +1548,56 @@ def raster_gdal_type(raster_path, band=1):
 
 
 def raster_ds_gdal_type(raster_ds, band=1):
-    """Return raster dataset GDAL type (default to the first band)"""
+    """Return raster dataset GDAL type (default to the first band)
+
+    Parameters
+    ----------
+    raster_ds :
+    band : int, optional
+        The band of the raster file path to operate on (the default is 1).
+        Band numbers are 1's based.
+
+    Returns
+    -------
+    GDAL raster data type
+
+    """
     return raster_ds.GetRasterBand(band).DataType
 
 
 def raster_path_set_nodata(raster_path, input_nodata):
-    """Set raster nodata value for all bands"""
+    """Set raster nodata value for all bands
+
+    Parameters
+    ----------
+    raster_path : str
+        File path point to a GDAL supported raster.
+
+    Returns
+    -------
+    None
+
+    """
     raster_ds = gdal.Open(raster_path, 1)
     raster_ds_set_nodata(raster_ds, input_nodata)
     del raster_ds
 
 
 def raster_ds_set_nodata(raster_ds, input_nodata):
-    """Set raster dataset nodata value for all bands"""
+    """Set raster dataset nodata value for all bands
+
+    Parameters
+    ----------
+    raster_ds :
+
+    Returns
+    -------
+    None
+
+    """
     band_cnt = raster_ds.RasterCount
     for band_i in range(band_cnt):
-        band = raster_ds.GetRasterBand(band_i+1)
+        band = raster_ds.GetRasterBand(band_i + 1)
         band.SetNoDataValue(input_nodata)
 
 
@@ -1608,12 +1720,14 @@ def project_extent(input_extent, input_osr, output_osr, cellsize=None):
     """
     if cellsize is None and env.cellsize:
         cellsize = env.cellsize
+
     # Build an in memory feature to project to
     mem_driver = ogr.GetDriverByName('Memory')
     output_ds = mem_driver.CreateDataSource('')
     output_lyr = output_ds.CreateLayer(
         'projected_extent', geom_type=ogr.wkbPolygon)
     feature_defn = output_lyr.GetLayerDefn()
+
     # Place points at every "cell" between pairs of corner points
     ring = ogr.Geometry(ogr.wkbLinearRing)
     corners = input_extent.corner_points()
@@ -1629,17 +1743,22 @@ def project_extent(input_extent, input_osr, output_osr, cellsize=None):
                         np.linspace(point_a[1], point_b[1], steps + 1)):
             ring.AddPoint(x, y)
     ring.CloseRings()
+
     # Set the ring geometry into a polygon
     polygon = ogr.Geometry(ogr.wkbPolygon)
     polygon.AddGeometry(ring)
+
     # Project the geometry
     tx = osr.CoordinateTransformation(input_osr, output_osr)
     polygon.Transform(tx)
+
     # Create a new feature and set the geometry into it
     feature = ogr.Feature(feature_defn)
     feature.SetGeometry(polygon)
+
     # Add the feature to the output layer
     output_lyr.CreateFeature(feature)
+
     # Get the extent from the projected polygon
     return feature_lyr_extent(output_lyr)
 
@@ -1672,24 +1791,30 @@ def extent_polygon(input_extent, output_path, output_osr=None):
     output_lyr = output_ds.CreateLayer(
         'study_area', geom_type=ogr.wkbPolygon)
     feature_defn = output_lyr.GetLayerDefn()
+
     # Place points at extent corners
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for x, y in input_extent.corner_points():
         ring.AddPoint(x, y)
     ring.CloseRings()
+
     # Set the ring geometry into a polygon
     polygon = ogr.Geometry(ogr.wkbPolygon)
     polygon.AddGeometry(ring)
+
     # Create a new feature and set the geometry into it
     feature = ogr.Feature(feature_defn)
     feature.SetGeometry(polygon)
+
     # Add the feature to the output layer
     output_lyr.CreateFeature(feature)
     output_ds = None
+
     if output_osr is not None:
         # Write projection/spatial reference
         with open(output_path.replace('.shp', '.prj'), 'w') as prj_f:
             prj_f.write(output_osr.ExportToWkt())
+
     return True
 
 
@@ -1723,20 +1848,23 @@ def extent_raster(output_extent, output_path, output_osr=None,
         output_cs = env.cellsize
     output_rows, output_cols = output_extent.shape(output_cs)
     output_geo = output_extent.geo(output_cs)
+
     output_driver = raster_driver(output_path)
     if os.path.isfile(output_path):
         output_driver.Delete(output_path)
+
     if output_path.lower().endswith('.img'):
         output_raster_ds = output_driver.Create(
             output_path, output_cols, output_rows, 1, gdal.GDT_Byte,
             ['COMPRESSED=YES', 'BLOCKSIZE={}'.format(output_bs)])
-    elif output_raster.upper().endswith('.TIF'):
+    elif output_path.lower().endswith('.tif'):
         output_raster_ds = output_driver.Create(
-            output_raster, output_cols, output_rows, 1, gdal.GDT_Byte,
+            output_path, output_cols, output_rows, 1, gdal.GDT_Byte,
             ['COMPRESS=LZW', 'TILED=YES'])
     else:
         output_raster_ds = output_driver.Create(
             output_path, output_cols, output_rows, 1, gdal.GDT_Byte)
+
     output_raster_ds.SetGeoTransform(output_geo)
     output_raster_ds.SetProjection(output_osr.ExportToWkt())
     output_band = output_raster_ds.GetRasterBand(1)
@@ -1915,7 +2043,7 @@ def trim_array_nodata(t_array, t_nodata=0):
     for sub_xf in reversed(range(t_cols)):
         if np.any(t_mask[:, sub_xf]):
             break
-    return t_array[sub_yi:(sub_yf+1), sub_xi:(sub_xf+1)], sub_xi, sub_yi
+    return t_array[sub_yi:(sub_yf + 1), sub_xi:(sub_xf + 1)], sub_xi, sub_yi
 
 
 def raster_to_array(input_raster, band=1, mask_extent=None,
@@ -2016,8 +2144,7 @@ def raster_ds_to_array(input_raster_ds, band=1, mask_extent=None,
         output_array = input_band.ReadAsArray(
             0, 0, input_raster_ds.RasterXSize, input_raster_ds.RasterYSize)
     # For float types, set nodata values to nan
-    if (output_array.dtype == np.float32 or
-            output_array.dtype == np.float64):
+    if output_array.dtype in [np.float32, np.float64]:
         output_nodata = np.nan
         if input_nodata is not None:
             output_array[output_array == input_nodata] = output_nodata
@@ -2128,7 +2255,8 @@ def array_to_block(input_array, block_i=0, block_j=0, bs=64):
     int_rows, int_cols = block_shape(
         input_rows, input_cols, block_i, block_j, bs)
     output_array = np.copy(input_array[
-        block_i: block_i+int_rows, block_j: block_j+int_cols])
+                           block_i: block_i + int_rows,
+                           block_j: block_j + int_cols])
     return output_array
 
 
@@ -2138,7 +2266,7 @@ def block_to_array(block_array, output_array, block_i=0, block_j=0, bs=64):
     int_rows, int_cols = block_shape(
         output_rows, output_cols, block_i, block_j, bs)
     output_array[
-        block_i: block_i+int_rows, block_j: block_j+int_cols] = block_array
+    block_i: block_i + int_rows, block_j: block_j + int_cols] = block_array
     return output_array
 
 
@@ -2221,10 +2349,10 @@ def raster_ds_to_block(input_raster_ds, block_i=0, block_j=0, bs=64, band=1,
     int_rows, int_cols = block_shape(
         input_rows, input_cols, block_i, block_j, bs)
     output_array = input_band.ReadAsArray(block_j, block_i, int_cols, int_rows)
-    if (output_array.dtype == np.float32 or
-        output_array.dtype == np.float64):
+    if output_array.dtype in [np.float32, np.float64]:
         output_nodata = np.nan
-        output_array[output_array == input_nodata] = output_nodata
+        if input_nodata is not None:
+            output_array[output_array == input_nodata] = output_nodata
     else:
         output_nodata = int(input_nodata)
     if return_nodata:
@@ -2303,8 +2431,7 @@ def array_to_raster(input_array, output_raster, output_geo=None,
     for block_i, block_j in block_gen(input_rows, input_cols, bs=1024):
         block_array = array_to_block(input_array, block_i, block_j, bs=1024)
         # If float type, set nan values to raster nodata value
-        if (block_array.dtype == np.float32 or
-                block_array.dtype == np.float64):
+        if block_array.dtype in [np.float32, np.float64]:
             block_array[np.isnan(block_array)] = output_nodata
         # Set masked values to raster nodata value as well
         if mask_array is not None:
@@ -2319,8 +2446,7 @@ def array_to_raster(input_array, output_raster, output_geo=None,
     # # DEADBEEF - Write rasters at once
     # output_array = np.copy(input_array)
     # # If float type, set nan values to raster nodata value
-    # if (input_array.dtype == np.float32 or
-    #     input_array.dtype == np.float64):
+    # if input_array.dtype in [np.float32, np.float64]:
     #     output_array[np.isnan(input_array)] = output_nodata
     # # Set masked values to raster nodata value as well
     # if np.any(mask_array):
@@ -2378,7 +2504,7 @@ def array_to_mem_ds(input_array, output_geo=None, output_proj=None,
     output_driver = gdal.GetDriverByName('MEM')
     output_raster_ds = output_driver.Create(
         '', input_cols, input_rows, 1, input_gtype)
-        # ['COMPRESSED=YES', 'BLOCKSIZE={}'.format(output_bs)]
+    # ['COMPRESSED=YES', 'BLOCKSIZE={}'.format(output_bs)]
 
     output_raster_ds.SetGeoTransform(output_geo)
     output_raster_ds.SetProjection(output_proj)
@@ -2394,8 +2520,7 @@ def array_to_mem_ds(input_array, output_geo=None, output_proj=None,
     for block_i, block_j in block_gen(input_rows, input_cols, bs=1024):
         block_array = array_to_block(input_array, block_i, block_j, bs=1024)
         # If float type, set nan values to raster nodata value
-        if (block_array.dtype == np.float32 or
-            block_array.dtype == np.float64):
+        if block_array.dtype in [np.float32, np.float64]:
             block_array[np.isnan(block_array)] = output_nodata
         # Set masked values to raster nodata value as well
         if mask_array is not None:
@@ -2449,8 +2574,7 @@ def block_to_raster(input_array, output_raster, block_i=0, block_j=0,
         else:
             output_band.SetNoDataValue(output_nodata)
         # If float type, set nan values to raster nodata value
-        if (input_array.dtype == np.float32 or
-                input_array.dtype == np.float64):
+        if input_array.dtype in [np.float32, np.float64]:
             # Copy the input raster so that the nodata value can be modified
             output_array = np.copy(input_array)
             output_array[np.isnan(input_array)] = output_nodata
@@ -2503,11 +2627,11 @@ def raster_statistics(input_raster):
     output_raster_ds = gdal.Open(input_raster, 1)
     for band_i in range(int(output_raster_ds.RasterCount)):
         try:
-            band = output_raster_ds.GetRasterBand(band_i+1)
+            band = output_raster_ds.GetRasterBand(band_i + 1)
             stats = band_statistics(band)
         except RuntimeError:
             logging.debug('  {} - band {} - all cells nodata'.format(
-                input_raster, band_i+1))
+                input_raster, band_i + 1))
             continue
         except Exception as e:
             logging.debug('Unhandled exception: {}'.format(e))
@@ -2576,8 +2700,8 @@ def save_raster_ds(input_raster_ds, output_raster, output_bs=64):
 
     # Write data for each band
     for band in range(input_bands):
-        input_band = input_raster_ds.GetRasterBand(band+1)
-        output_band = output_raster_ds.GetRasterBand(band+1)
+        input_band = input_raster_ds.GetRasterBand(band + 1)
+        output_band = output_raster_ds.GetRasterBand(band + 1)
         output_band.Fill(input_band.GetNoDataValue())
         output_band.SetNoDataValue(input_band.GetNoDataValue())
         input_array = input_band.ReadAsArray(
@@ -2614,14 +2738,16 @@ def array_to_comp_raster(band_array, output_raster, band=1, mask_array=None,
     output_band = output_ds.GetRasterBand(band)
     output_nodata = output_band.GetNoDataValue()
     output_array = np.copy(band_array)
+
     # If float type, set nan values to raster nodata value
-    if (band_array.dtype == np.float32 or
-            band_array.dtype == np.float64):
+    if band_array.dtype in [np.float32, np.float64]:
         output_array[np.isnan(output_array)] = output_nodata
+
     # Set masked values to raster nodata value as well
     if np.any(mask_array):
         output_array[mask_array == 0] = output_nodata
     output_band.WriteArray(output_array, 0, 0)
+
     if stats_flag:
         band_statistics(output_band)
     output_ds = None
@@ -2655,6 +2781,7 @@ def extract_by_mask(input_raster, band=1, mask_path=None, return_geo=False):
         else:
             logging.error('\nERROR: No mask was specificed\n')
             sys.exit()
+
     # Open input raster
     input_raster_ds = gdal.Open(input_raster)
     input_bands = input_raster_ds.RasterCount
@@ -2664,10 +2791,12 @@ def extract_by_mask(input_raster, band=1, mask_path=None, return_geo=False):
     input_extent = raster_ds_extent(input_raster_ds)
     input_rows, input_cols = input_extent.shape()
     input_geo = input_extent.geo()
+
     # If input_raster and mask are the same, return input_array & geo
     if (input_raster == mask_path):
         int_array = input_band.ReadAsArray(0, 0, input_cols, input_rows)
         int_geo = input_geo
+
     # Load mask feature to get extent
     # If mask_path is a shapefile, convert to a memory raster
     if mask_path.upper().endswith('.SHP'):
@@ -2678,6 +2807,7 @@ def extract_by_mask(input_raster, band=1, mask_path=None, return_geo=False):
     mask_extent.adjust_to_snap('EXPAND')
     mask_rows, mask_cols = mask_extent.shape()
     mask_geo = mask_extent.geo()
+
     # If extents don't overlap, return input_array & geo
     if not extents_overlap(input_extent, mask_extent):
         int_array = input_band.ReadAsArray(0, 0, input_cols, input_rows)
@@ -2698,7 +2828,7 @@ def extract_by_mask(input_raster, band=1, mask_path=None, return_geo=False):
         # Calculate where both rasters have data
         mask_nodata = mask_band.GetNoDataValue()
         int_mask = (
-            (input_array != input_nodata) & (mask_array != mask_nodata))
+                (input_array != input_nodata) & (mask_array != mask_nodata))
         del mask_array
         # If no pixels are common to input and mask, return full input
         if not np.any(int_mask):
@@ -2713,13 +2843,14 @@ def extract_by_mask(input_raster, band=1, mask_path=None, return_geo=False):
                 ((int_geo[0] + sub_xi * int_geo[1]), int_geo[1], 0.,
                  (int_geo[3] + sub_yi * int_geo[5]), 0., int_geo[5]))
     input_raster_ds = None
+
     # Set cells with input nodata to nan for floats and 0 for all others
     # if 'Float' in gdal.GetDataTypeName(input_type):
-    if (int_array.dtype == np.float32 or
-        int_array.dtype == np.float64):
+    if int_array.dtype in [np.float32, np.float64]:
         int_array[int_array == input_nodata] = np.nan
     else:
         int_array[int_array == input_nodata] = 0
+
     if return_geo:
         return int_array, int_geo
     else:
@@ -2772,7 +2903,7 @@ def save_point_to_shapefile(point_path, point_x, point_y, snap_proj=None):
     point_osr.MorphToESRI()
     point_proj = point_osr.ExportToWkt()
     # Write projection/spatial reference
-    prj_file = open(point_path.replace('.shp','.prj'), 'w')
+    prj_file = open(point_path.replace('.shp', '.prj'), 'w')
     prj_file.write(point_proj)
     prj_file.close()
 
@@ -2919,8 +3050,8 @@ def raster_value_at_xy(input_raster, input_xy, band=1):
     input_rows, input_cols = raster_ds_shape(input_raster_ds)
     # Return np.nan for invalid offsets
     if (x_offset < 0 or y_offset < 0 or
-        x_offset >= input_cols or
-        y_offset >= input_rows):
+            x_offset >= input_cols or
+            y_offset >= input_rows):
         cell_value = np.nan
     else:
         cell_value = float(
@@ -2952,7 +3083,7 @@ def array_value_at_xy(input_array, input_geo, input_xy,
     """
 
     # Assume nodata value for 32bit float arrays
-    if input_nodata is None and input_array.dtype == np.float32:
+    if input_nodata is None and input_array.dtype in [np.float32, np.float64]:
         input_nodata = numpy_type_nodata(input_array.dtype)
 
     x_offset, y_offset = array_xy_offsets(input_geo, input_xy)
@@ -2999,7 +3130,7 @@ def raster_value_set(test_raster, test_name, cold_xy, hot_xy,
     cold_flt = raster_value_at_xy(test_raster, cold_xy)
     hot_flt = raster_value_at_xy(test_raster, hot_xy)
     log_str = '    {:<10s}  {:14.8f}  {:14.8f}'.format(
-        test_name+':', cold_flt, hot_flt)
+        test_name + ':', cold_flt, hot_flt)
     if log_level == 'DEBUG':
         logging.debug(log_str)
     else:
@@ -3009,7 +3140,8 @@ def raster_value_set(test_raster, test_name, cold_xy, hot_xy,
 
 def mosaic_tiles(input_list, output_raster, output_osr=None,
                  output_cs=None, output_extent=None,
-                 snap_x=None, snap_y=None):
+                 snap_x=None, snap_y=None,
+                 resampling_type=gdal.GRA_Bilinear):
     """Mosaic/project/clip input rasters
 
     Parameters
@@ -3026,6 +3158,10 @@ def mosaic_tiles(input_list, output_raster, output_osr=None,
         Extent to clip the mosaic to.
     snap_x : float, optional
     snap_y : float, optional
+    resample_type : int, optional
+        GDAL resample method (the default is Bilinear).
+        GRA_NearestNeighbour=0, GRA_Bilinear=1, GRA_Cubic=2, GRA_CubicSpline=3
+        For others: http://www.gdal.org/gdalwarper_8h.html
 
     Returns
     -------
@@ -3037,10 +3173,12 @@ def mosaic_tiles(input_list, output_raster, output_osr=None,
         output_osr = env.snap_osr
     elif output_osr is None and not env.snap_osr:
         output_osr = raster_path_osr(input_list[0])
+
     if output_cs is None and env.cellsize:
         output_cs = env.cellsize
     elif output_cs is None and not env.cellsize:
         output_cs = raster_path_cellsize(input_list[0])[0]
+
     # Try to set snap from output extent
     if output_extent is not None:
         snap_x, snap_y = output_extent.origin()
@@ -3058,37 +3196,31 @@ def mosaic_tiles(input_list, output_raster, output_osr=None,
     # Initialize output raster parameters as None
     mosaic_geo = None
     mosaic_extent = None
-    # mosaic_shape = None
     mosaic_cs = None
-    # mosaic_proj = None
     mosaic_osr = None
-    mosaic_type = None
+    mosaic_gtype = None
     mosaic_nodata = None
 
     # Read input rasters to get output extent, spatial reference, and cell size
     for input_path in input_list:
         input_ds = gdal.Open(input_path, 0)
-        # input_proj = raster_ds_proj(input_ds)
         input_osr = raster_ds_osr(input_ds)
         input_cs = raster_ds_cellsize(input_ds, x_only=True)
-        # input_geo = input_ds.GetGeoTransform()
-        # input_shape = raster_ds_shape(input_ds)
         input_extent = raster_ds_extent(input_ds)
         input_band = input_ds.GetRasterBand(1)
         input_nodata = input_band.GetNoDataValue()
-        input_type = input_band.DataType
+        input_gtype = input_band.DataType
+
         # Use first raster to set output parameters
         # Eventually check that other rasters match
         if mosaic_cs is None:
             mosaic_cs = input_cs
-        # if mosaic_proj is None:
-        #    mosaic_proj = input_proj
         if mosaic_osr is None:
             mosaic_osr = input_osr
         if mosaic_nodata is None:
             mosaic_nodata = input_nodata
-        if mosaic_type is None:
-            mosaic_type = input_type
+        if mosaic_gtype is None:
+            mosaic_gtype = input_gtype
         if mosaic_extent is None:
             mosaic_extent = input_extent
         else:
@@ -3100,10 +3232,12 @@ def mosaic_tiles(input_list, output_raster, output_osr=None,
     mosaic_rows, mosaic_cols = mosaic_extent.shape(mosaic_cs)
     mosaic_driver = raster_driver('')
     mosaic_ds = mosaic_driver.Create(
-        '', mosaic_cols, mosaic_rows, 1, mosaic_type)
+        '', mosaic_cols, mosaic_rows, 1, mosaic_gtype)
     mosaic_ds.SetGeoTransform(mosaic_geo)
     mosaic_ds.SetProjection(mosaic_osr.ExportToWkt())
     mosaic_band = mosaic_ds.GetRasterBand(1)
+    mosaic_nodata = gdal_type_nodata(mosaic_gtype)
+    # mosaic_nodata = numpy_type_nodata(gdal_to_numpy_type(mosaic_gtype))
     mosaic_band.SetNoDataValue(mosaic_nodata)
     mosaic_band.Fill(mosaic_nodata)
 
@@ -3118,10 +3252,18 @@ def mosaic_tiles(input_list, output_raster, output_osr=None,
         common_xi, common_yi = array_geo_offsets(
             mosaic_geo, common_geo, mosaic_cs)
         input_band = input_ds.GetRasterBand(1)
+        input_nodata = input_band.GetNoDataValue()
+        # input_nodata = gdal_type_nodata(input_band.DataType)
         input_array = input_band.ReadAsArray(0, 0, input_cols, input_rows)
+
+        # Convert float nodata cells to the mosaic nodata value
+        if (input_array.dtype in [np.float32, np.float64] and
+                input_nodata is not None):
+            input_array[input_array == input_nodata] = mosaic_nodata
         mosaic_band.WriteArray(input_array, common_xi, common_yi)
         del input_array
         input_ds = None
+
     # Calculate projected extent
     # Then adjust extents to snap
     if output_extent is None:
@@ -3130,11 +3272,10 @@ def mosaic_tiles(input_list, output_raster, output_osr=None,
         output_extent.adjust_to_snap('EXPAND', snap_x, snap_y, output_cs)
 
     # Project mosaic
-    resampling_type = gdal.GRA_Bilinear
-    # resampling_type = gdal.GRA_NearestNeighbour
     project_raster_ds(
         mosaic_ds, output_raster, resampling_type,
         output_osr, output_cs, output_extent)
+
     return True
 
 
@@ -3145,8 +3286,9 @@ def project_raster_mp(tup):
     ----------
     input_raster : str
     output_raster : str
-    resample_type (): GDAL resample method
-        GRA_NearestNeighbour, GRA_Bilinear, GRA_Cubic, GRA_CubicSpline
+    resample_type : int
+        GDAL resample method.
+        GRA_NearestNeighbour=0, GRA_Bilinear=1, GRA_Cubic=2, GRA_CubicSpline=3
         For others: http://www.gdal.org/gdalwarper_8h.html
     output_proj : str
         Well Known Text (WKT) representation of OSR spatial reference.
@@ -3184,10 +3326,10 @@ def project_raster(input_raster, output_raster, resampling_type,
     ----------
     input_raster :
     output_raster :
-    resample_type : GDAL resample method
-        GRA_NearestNeighbour, GRA_Bilinear, GRA_Cubic, GRA_CubicSpline
+    resample_type : int
+        GDAL resample method.
+        GRA_NearestNeighbour=0, GRA_Bilinear=1, GRA_Cubic=2, GRA_CubicSpline=3
         For others: http://www.gdal.org/gdalwarper_8h.html
-    output_osr : spatial reference object
     output_cs :
     output_extent :
     input_nodata :
@@ -3303,7 +3445,7 @@ def project_raster_ds(input_ds, output_raster, resampling_type,
     else:
         output_ds = output_driver.CreateCopy(output_raster, proj_ds, 0)
     for band_i in range(output_ds.RasterCount):
-        output_band = output_ds.GetRasterBand(band_i+1)
+        output_band = output_ds.GetRasterBand(band_i + 1)
         band_statistics(output_band)
     output_ds = None
     proj_ds = None
@@ -3369,9 +3511,8 @@ def project_array(input_array, resampling_type,
 
     # If input array has nan, make a copy in order to set nodata values
     copy_array = np.array(input_array, copy=True)
-    if ((input_array.dtype == np.float32 or
-         input_array.dtype == np.float64) and
-        np.isnan(copy_array).any()):
+    if (input_array.dtype in [np.float32, np.float64] and
+            np.isnan(copy_array).any()):
         copy_array[np.isnan(copy_array)] = input_nodata
 
     # For 2d arrays, insert an a "band" dimension at the beginning
@@ -3420,8 +3561,7 @@ def project_array(input_array, resampling_type,
             0, 0, output_cols, output_rows)
 
     # For float types, set nodata values to nan
-    if (output_array.dtype == np.float32 or
-        output_array.dtype == np.float64):
+    if output_array.dtype in [np.float32, np.float64]:
         output_nodata = np.nan
         output_array[output_array == input_nodata] = output_nodata
     else:
@@ -3598,8 +3738,7 @@ def ascii_to_array(input_ascii, input_type=np.float32, input_nodata=-9999):
     # Read data to array using loadtxt
     # output_array = np.loadtxt(input_ascii, dtype=input_type, skiprows=6)
     # For float types, set nodata values to nan
-    if (output_array.dtype == np.float32 or
-            output_array.dtype == np.float64):
+    if output_array.dtype in [np.float32, np.float64]:
         output_nodata = np.nan
         output_array[output_array == input_nodata] = output_nodata
     else:
@@ -3610,6 +3749,7 @@ def ascii_to_array(input_ascii, input_type=np.float32, input_nodata=-9999):
 def build_empty_raster_mp(args):
     """Wrapper for calling build_empty_raster"""
     build_empty_raster(*args)
+
 
 def build_empty_raster(output_raster, band_cnt=1, output_dtype=None,
                        output_nodata=None, output_proj=None,
@@ -3664,7 +3804,7 @@ def build_empty_raster(output_raster, band_cnt=1, output_dtype=None,
     output_ds.SetGeoTransform(output_extent.geo(output_cs))
     output_ds.SetProjection(output_proj)
     for band in range(band_cnt):
-        output_band = output_ds.GetRasterBand(band+1)
+        output_band = output_ds.GetRasterBand(band + 1)
         if output_fill_flag:
             output_band.Fill(output_nodata)
         output_band.SetNoDataValue(output_nodata)
