@@ -17,3 +17,6 @@ dist/
 
 # PyCharm project settings
 .idea
+
+# Miscellaneous files
+notes.txt
