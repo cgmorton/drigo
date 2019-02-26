@@ -1,6 +1,6 @@
 from .drigo import *
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 # Check the GDAL_DATA environment variable
 if "GDAL_DATA" not in os.environ:
